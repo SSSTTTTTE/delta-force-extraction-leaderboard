@@ -78,13 +78,15 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return sendJson(res, 204, {});
 
   const route = getPath(req);
-  if (route[0] !== "leaderboard") return sendJson(res, 404, { error: "not found" });
+  if (route[0] !== "leaderboard" && route[0] !== "admin") {
+    return sendJson(res, 404, { error: "not found" });
+  }
 
-  if (req.method === "GET" && route.length === 1) {
+  if (route[0] === "leaderboard" && req.method === "GET" && route.length === 1) {
     return sendJson(res, 200, buildResponse());
   }
 
-  if (req.method === "GET" && route[1] === "player" && route[2]) {
+  if (route[0] === "leaderboard" && req.method === "GET" && route[1] === "player" && route[2]) {
     const playerId = decodeURIComponent(route.slice(2).join("/"));
     const data = loadData();
     if (!(playerId in data.totals)) return sendJson(res, 404, { error: "玩家不存在" });
@@ -95,7 +97,7 @@ export default async function handler(req, res) {
     });
   }
 
-  if (req.method === "POST" && route[1] === "entries") {
+  if (route[0] === "leaderboard" && req.method === "POST" && route[1] === "entries") {
     try {
       const body = bodyOf(req);
       const playerId = String(body.playerId ?? "").trim();
@@ -116,9 +118,10 @@ export default async function handler(req, res) {
     }
   }
 
-  if (route[1] !== "admin") return sendJson(res, 404, { error: "not found" });
+  const adminPrefix = route[0] === "admin" ? 0 : 1;
+  if (route[adminPrefix] !== "admin") return sendJson(res, 404, { error: "not found" });
 
-  if (req.method === "POST" && route[2] === "login") {
+  if (req.method === "POST" && route[adminPrefix + 1] === "login") {
     if (!ADMIN_PASSWORD || !ADMIN_TOKEN) {
       return sendJson(res, 503, { error: "管理员登录未配置，请先设置 ADMIN_PASSWORD 和 ADMIN_TOKEN" });
     }
@@ -134,7 +137,7 @@ export default async function handler(req, res) {
 
   if (!requireAdmin(req, res)) return;
 
-  if (req.method === "GET" && route[2] === "players") {
+  if (req.method === "GET" && route[adminPrefix + 1] === "players") {
     const data = loadData();
     const players = Object.entries(data.totals)
       .map(([playerId, total]) => ({
@@ -146,7 +149,7 @@ export default async function handler(req, res) {
     return sendJson(res, 200, { players });
   }
 
-  if (req.method === "POST" && route[2] === "adjust") {
+  if (req.method === "POST" && route[adminPrefix + 1] === "adjust") {
     try {
       const body = bodyOf(req);
       const playerId = String(body.playerId ?? "").trim();
@@ -165,7 +168,7 @@ export default async function handler(req, res) {
     }
   }
 
-  if (req.method === "POST" && route[2] === "delete-entry") {
+  if (req.method === "POST" && route[adminPrefix + 1] === "delete-entry") {
     try {
       const body = bodyOf(req);
       const playerId = String(body.playerId ?? "").trim();
