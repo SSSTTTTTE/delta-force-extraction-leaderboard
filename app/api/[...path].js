@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import seedData from "../server/data.json" with { type: "json" };
 
 const DATA_FILE = path.join(process.cwd(), "server", "data.json");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "";
@@ -15,7 +16,10 @@ function loadData() {
       history: raw && typeof raw.history === "object" && raw.history !== null ? raw.history : {},
     };
   } catch {
-    return { totals: {}, history: {} };
+    return {
+      totals: seedData.totals ?? {},
+      history: seedData.history ?? {},
+    };
   }
 }
 
