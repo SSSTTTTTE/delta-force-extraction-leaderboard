@@ -1,0 +1,721 @@
+/* ===== 三角洲带出价值排行榜 —— 设计稿坐标系 1024 x 1536 ===== */
+
+.lb-root {
+  width: 100%;
+  min-height: 100vh;
+  background: #040806;
+  display: flex;
+  justify-content: center;
+  overflow-x: hidden;
+  font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.lb-viewport {
+  position: relative;
+}
+
+.lb-stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1024px;
+  height: 1536px;
+  transform-origin: top left;
+  background: #040806;
+  overflow: hidden;
+  color: #dfe9e4;
+}
+
+/* ---------- 背景 ---------- */
+.lb-bg {
+  position: absolute;
+  inset: 0;
+  background: url("/assets/bg_ambient.jpg") center / cover no-repeat;
+}
+.lb-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 90% 55% at 50% 30%, rgba(20, 60, 48, 0.18), transparent 60%),
+    linear-gradient(180deg, rgba(3, 7, 5, 0.35) 0%, rgba(3, 7, 5, 0.1) 30%, rgba(3, 7, 5, 0.55) 78%, rgba(2, 5, 4, 0.92) 100%);
+}
+
+/* ---------- 顶部 logo / HUD ---------- */
+.lb-logo {
+  position: absolute;
+  left: 24px;
+  top: 14px;
+  width: 187px;
+  height: 65px;
+}
+
+.lb-hud-right {
+  position: absolute;
+  right: 26px;
+  top: 54px;
+  text-align: right;
+  font-family: "Rajdhani", monospace;
+  font-size: 10px;
+  line-height: 1.7;
+  letter-spacing: 1px;
+  color: rgba(63, 220, 150, 0.5);
+}
+
+.lb-hud-left {
+  position: absolute;
+  left: 8px;
+  top: 430px;
+  writing-mode: vertical-rl;
+  font-family: "Rajdhani", monospace;
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: rgba(63, 220, 150, 0.4);
+}
+
+/* ---------- 标题 ---------- */
+.lb-title-wrap {
+  position: absolute;
+  left: 0;
+  top: 82px;
+  width: 1024px;
+  text-align: center;
+}
+
+.lb-title-frame {
+  position: relative;
+  display: inline-block;
+  padding: 6px 60px 10px;
+}
+
+.lb-title-frame .corner {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-color: rgba(63, 220, 150, 0.75);
+  border-style: solid;
+}
+.lb-title-frame .c-tl { top: 0; left: 0; border-width: 2px 0 0 2px; }
+.lb-title-frame .c-tr { top: 0; right: 0; border-width: 2px 2px 0 0; }
+.lb-title-frame .c-bl { bottom: 0; left: 0; border-width: 0 0 2px 2px; }
+.lb-title-frame .c-br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+
+.lb-title-frame .diamond {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  background: rgba(63, 220, 150, 0.85);
+  transform: rotate(45deg);
+  box-shadow: 0 0 8px rgba(63, 220, 150, 0.8);
+}
+.lb-title-frame .d-l { left: -26px; }
+.lb-title-frame .d-r { right: -26px; }
+
+.lb-title {
+  margin: 0;
+  font-size: 54px;
+  line-height: 1.1;
+  font-weight: 900;
+  letter-spacing: 6px;
+  color: #f2f7f4;
+  text-shadow: 0 0 22px rgba(63, 220, 150, 0.35), 0 2px 6px rgba(0, 0, 0, 0.6);
+  transform: skewX(-4deg);
+  white-space: nowrap;
+}
+
+.lb-subtitle {
+  margin-top: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 3px;
+  color: rgba(63, 220, 150, 0.92);
+}
+.lb-subtitle .dia {
+  color: rgba(63, 220, 150, 0.6);
+  font-size: 12px;
+  letter-spacing: 0;
+  padding: 0 6px;
+}
+
+/* ---------- 领奖台 ---------- */
+.podium {
+  position: absolute;
+  text-align: center;
+}
+
+/* 号码牌 */
+.tab {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2; /* 盖在卡片上方，号码牌完整可见 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  clip-path: polygon(12% 0, 88% 0, 100% 32%, 87% 100%, 50% 86%, 13% 100%, 0 32%);
+}
+.tab::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  clip-path: polygon(12% 0, 88% 0, 100% 32%, 87% 100%, 50% 86%, 13% 100%, 0 32%);
+}
+.tab span {
+  position: relative;
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 700;
+  line-height: 1;
+  transform: translateY(-4%);
+}
+
+.tab-gold {
+  width: 176px;
+  height: 76px;
+  background: linear-gradient(160deg, #8a6410, #f9d977 30%, #a1791a 65%, #6e4f0a);
+}
+.tab-gold::before {
+  background: linear-gradient(165deg, #f6dc8d 0%, #c9992e 38%, #8a6410 75%, #c9a53a 100%);
+}
+.tab-gold span {
+  font-size: 52px;
+  background: linear-gradient(180deg, #fffbe8, #e9c558 70%, #a1791a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 1px 2px rgba(60, 40, 0, 0.8));
+}
+
+.tab-silver {
+  width: 96px;
+  height: 84px;
+  background: linear-gradient(160deg, #5d686f, #e6eef4 30%, #89949c 65%, #454e55);
+}
+.tab-silver::before {
+  background: linear-gradient(165deg, #dde6ec 0%, #9aa6af 38%, #5f6a72 75%, #b9c5cd 100%);
+}
+.tab-silver span {
+  font-size: 56px;
+  background: linear-gradient(180deg, #ffffff, #c3ced6 70%, #7d8890);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 1px 2px rgba(10, 15, 20, 0.8));
+}
+
+.tab-bronze {
+  width: 116px;
+  height: 64px;
+  background: linear-gradient(160deg, #6e3d18, #f0c29a 30%, #a05c28 65%, #4e2a0e);
+}
+.tab-bronze::before {
+  background: linear-gradient(165deg, #e9ba8e 0%, #b0703a 38%, #6e3d18 75%, #d89a63 100%);
+}
+.tab-bronze span {
+  font-size: 42px;
+  background: linear-gradient(180deg, #fdf0dd, #dfa06a 70%, #8a4f22);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 1px 2px rgba(40, 20, 0, 0.8));
+}
+
+/* 卡片 */
+.pcard {
+  position: absolute;
+  left: 0;
+  right: 0;
+  clip-path: polygon(26px 0, calc(100% - 26px) 0, 100% 26px, 100% 100%, 0 100%, 0 26px);
+}
+.pcard .pcard-in {
+  position: absolute;
+  inset: 2px;
+  clip-path: polygon(25px 0, calc(100% - 25px) 0, 100% 25px, 100% 100%, 0 100%, 0 25px);
+  background: linear-gradient(180deg, rgba(14, 22, 18, 0.88) 0%, rgba(8, 13, 11, 0.92) 60%, rgba(10, 16, 13, 0.95) 100%);
+}
+.pcard-gold {
+  background: linear-gradient(180deg, rgba(255, 214, 110, 0.75), rgba(160, 120, 30, 0.35) 30%, rgba(120, 90, 20, 0.25) 70%, rgba(255, 200, 90, 0.55));
+  box-shadow: 0 0 46px rgba(255, 190, 60, 0.28);
+}
+.pcard-silver {
+  background: linear-gradient(180deg, rgba(205, 226, 238, 0.6), rgba(120, 140, 152, 0.28) 30%, rgba(90, 105, 115, 0.22) 70%, rgba(190, 214, 226, 0.45));
+  box-shadow: 0 0 34px rgba(160, 200, 220, 0.18);
+}
+.pcard-bronze {
+  background: linear-gradient(180deg, rgba(240, 190, 140, 0.6), rgba(165, 100, 50, 0.3) 30%, rgba(115, 70, 32, 0.24) 70%, rgba(230, 160, 100, 0.5));
+  box-shadow: 0 0 34px rgba(230, 150, 80, 0.2);
+}
+
+.pcard .sheen {
+  position: absolute;
+  top: 0;
+  left: 8%;
+  right: 8%;
+  height: 90px;
+  background: radial-gradient(ellipse 60% 100% at 50% 0%, rgba(255, 255, 255, 0.1), transparent 70%);
+  pointer-events: none;
+}
+
+.podium .emblem {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.podium .crown {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.podium .pid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #eef4f0;
+}
+.podium .plabel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 4px;
+  color: rgba(190, 214, 202, 0.75);
+}
+.podium .pvalue {
+  position: absolute;
+  left: 0;
+  right: 0;
+  font-family: "Rajdhani", "Noto Sans SC", sans-serif;
+  font-weight: 700;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.pvalue-v1 {
+  font-size: 47px;
+  background: linear-gradient(180deg, #fff6d0 0%, #ffd864 45%, #e0a52e 80%, #b37d16 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 14px rgba(255, 200, 70, 0.45));
+}
+.pvalue-v2 {
+  font-size: 40px;
+  background: linear-gradient(180deg, #ffffff 0%, #d7e1e8 50%, #93a3ad 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 12px rgba(180, 210, 225, 0.35));
+}
+.pvalue-v3 {
+  font-size: 35px;
+  background: linear-gradient(180deg, #fdeed8 0%, #e8b184 50%, #a3622c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 12px rgba(225, 150, 85, 0.35));
+}
+
+/* 底座 */
+.pbase {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.pbase .plat {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  clip-path: polygon(6% 0, 94% 0, 100% 100%, 0 100%);
+}
+.pbase .streak {
+  position: absolute;
+  left: 2%;
+  right: 2%;
+  top: -2px;
+  height: 4px;
+  border-radius: 50%;
+}
+.pbase .glow {
+  position: absolute;
+  left: 50%;
+  top: -26px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  filter: blur(14px);
+}
+
+/* ---------- 榜单面板 ---------- */
+.lb-panel {
+  position: absolute;
+  left: 20px;
+  top: 655px;
+  width: 984px;
+  height: 813px;
+  clip-path: polygon(16px 0, calc(100% - 16px) 0, 100% 16px, 100% calc(100% - 16px), calc(100% - 16px) 100%, 16px 100%, 0 calc(100% - 16px), 0 16px);
+  background: linear-gradient(180deg, rgba(70, 150, 115, 0.4), rgba(50, 110, 85, 0.18) 12%, rgba(50, 110, 85, 0.14) 88%, rgba(70, 150, 115, 0.32));
+}
+.lb-panel-in {
+  position: absolute;
+  inset: 1px;
+  clip-path: polygon(15px 0, calc(100% - 15px) 0, 100% 15px, 100% calc(100% - 15px), calc(100% - 15px) 100%, 15px 100%, 0 calc(100% - 15px), 0 15px);
+  background: linear-gradient(180deg, rgba(10, 20, 16, 0.86), rgba(7, 13, 11, 0.9) 40%, rgba(6, 11, 9, 0.94));
+}
+
+.lb-head {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(90, 190, 140, 0.22);
+  background: linear-gradient(180deg, rgba(46, 120, 90, 0.16), rgba(46, 120, 90, 0.05));
+}
+.lb-head .hc {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #2fd68c;
+}
+.lb-head .hc-rank { position: absolute; left: 86px; }
+.lb-head .hc-id { position: absolute; left: 320px; }
+.lb-head .hc-val { position: absolute; left: 705px; display: flex; align-items: center; gap: 8px; }
+.lb-head .sort-ico {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.lb-head .sort-ico i {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+}
+.lb-head .sort-ico .up { border-bottom: 6px solid #2fd68c; }
+.lb-head .sort-ico .down { border-top: 6px solid rgba(47, 214, 140, 0.45); }
+
+.lb-rows {
+  position: absolute;
+  top: 53px;
+  left: 0;
+  right: 0;
+}
+
+.lb-row {
+  position: relative;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(120, 190, 155, 0.09);
+}
+.lb-row .rank {
+  position: absolute;
+  left: 0;
+  width: 230px;
+  text-align: center;
+  font-family: "Rajdhani", sans-serif;
+  font-size: 19px;
+  font-weight: 600;
+  color: rgba(200, 218, 208, 0.85);
+}
+.lb-row .rank img {
+  display: inline-block;
+  margin: 0 auto;
+  height: 44px;
+  vertical-align: middle;
+}
+.lb-row .rid {
+  position: absolute;
+  left: 320px;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  color: #d3ded8;
+}
+.lb-row .rval {
+  position: absolute;
+  right: 48px;
+  font-family: "Rajdhani", sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #2fe394;
+  text-shadow: 0 0 10px rgba(47, 227, 148, 0.3);
+}
+.lb-row .col-sep {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  width: 1px;
+  background: rgba(120, 190, 155, 0.12);
+}
+.lb-row .sep-1 { left: 288px; }
+.lb-row .sep-2 { left: 585px; }
+
+.lb-row-top1 {
+  background: linear-gradient(90deg, rgba(255, 205, 80, 0.09), rgba(255, 205, 80, 0.04));
+  box-shadow: inset 0 0 0 1px rgba(255, 208, 90, 0.55), inset 0 0 28px rgba(255, 200, 70, 0.12);
+  border-bottom-color: rgba(255, 205, 80, 0.3);
+}
+
+.lb-panel-foot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 16px;
+  text-align: center;
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: rgba(170, 196, 182, 0.55);
+}
+.lb-panel-foot .dash {
+  display: inline-block;
+  width: 110px;
+  height: 1px;
+  vertical-align: middle;
+  margin: 0 14px;
+  background: linear-gradient(90deg, transparent, rgba(170, 196, 182, 0.4));
+}
+.lb-panel-foot .dash-r {
+  transform: scaleX(-1);
+}
+
+/* ---------- 底部条 ---------- */
+.lb-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 56px;
+  border-top: 1px solid rgba(90, 170, 130, 0.18);
+  background: linear-gradient(180deg, rgba(6, 11, 9, 0.6), rgba(3, 6, 5, 0.9));
+}
+.lb-footer .f-left {
+  position: absolute;
+  left: 60px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.lb-footer .f-logo-txt {
+  font-family: "Rajdhani", sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: rgba(210, 226, 218, 0.75);
+}
+.lb-footer .f-sub {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: rgba(120, 150, 135, 0.5);
+}
+.lb-footer .f-compass {
+  position: absolute;
+  left: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(120, 150, 135, 0.4);
+  border-radius: 50%;
+}
+.lb-footer .f-compass::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  background: rgba(120, 150, 135, 0.5);
+  transform: rotate(45deg);
+}
+.lb-footer .f-barcode {
+  position: absolute;
+  right: 120px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 150px;
+  height: 22px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(150, 180, 165, 0.35) 0 2px,
+    transparent 2px 5px,
+    rgba(150, 180, 165, 0.35) 5px 6px,
+    transparent 6px 11px,
+    rgba(150, 180, 165, 0.35) 11px 14px,
+    transparent 14px 17px
+  );
+}
+.lb-footer .f-tri {
+  position: absolute;
+  right: 26px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 38px;
+}
+
+/* ---------- 底座配色 ---------- */
+.plat-gold { background: linear-gradient(180deg, #4a3808, #1c1503 70%); }
+.streak-gold {
+  background: linear-gradient(90deg, transparent, #ffe9a8 20%, #fff6d0 50%, #ffe9a8 80%, transparent);
+  box-shadow: 0 0 18px 4px rgba(255, 205, 80, 0.75);
+}
+.glow-gold { background: radial-gradient(ellipse, rgba(255, 195, 65, 0.55), transparent 70%); }
+
+.plat-silver { background: linear-gradient(180deg, #2c343b, #12181c 70%); }
+.streak-silver {
+  background: linear-gradient(90deg, transparent, #c8dbe8 20%, #f2f8fc 50%, #c8dbe8 80%, transparent);
+  box-shadow: 0 0 16px 4px rgba(175, 210, 230, 0.6);
+}
+.glow-silver { background: radial-gradient(ellipse, rgba(170, 205, 228, 0.4), transparent 70%); }
+
+.plat-bronze { background: linear-gradient(180deg, #3a2410, #170d04 70%); }
+.streak-bronze {
+  background: linear-gradient(90deg, transparent, #e8a56a 20%, #fbd9b5 50%, #e8a56a 80%, transparent);
+  box-shadow: 0 0 16px 4px rgba(230, 150, 80, 0.6);
+}
+.glow-bronze { background: radial-gradient(ellipse, rgba(228, 150, 82, 0.45), transparent 70%); }
+
+.lb-loading {
+  padding: 60px 0;
+  text-align: center;
+  font-size: 16px;
+  letter-spacing: 4px;
+  color: rgba(63, 220, 150, 0.6);
+}
+
+/* ---------- 入场与常驻动效 ---------- */
+@keyframes lb-rise {
+  from { opacity: 0; transform: translateY(26px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.podium {
+  animation: lb-rise 0.7s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+.podium.gold { animation-delay: 0.15s; }
+.podium.bronze { animation-delay: 0.3s; }
+
+/* 皇冠轻轻浮动 */
+.podium.gold .crown {
+  animation: lb-crown-bob 3s ease-in-out infinite;
+}
+@keyframes lb-crown-bob {
+  0%, 100% { margin-top: 0; }
+  50% { margin-top: -8px; }
+}
+
+/* 卡片高光呼吸 */
+.pcard .sheen {
+  animation: lb-sheen 4s ease-in-out infinite;
+}
+@keyframes lb-sheen {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* 标题辉光呼吸 */
+.lb-title {
+  animation: lb-title-glow 3.5s ease-in-out infinite;
+}
+@keyframes lb-title-glow {
+  0%, 100% { text-shadow: 0 0 22px rgba(63, 220, 150, 0.35), 0 2px 6px rgba(0, 0, 0, 0.6); }
+  50% { text-shadow: 0 0 34px rgba(63, 220, 150, 0.6), 0 2px 6px rgba(0, 0, 0, 0.6); }
+}
+
+/* SlotNumber 嵌套的 overflow:hidden 会破坏父级 background-clip:text，
+   需要把渐变直接应用到每个数字格上（单行文本，效果一致） */
+.pvalue-v1 .slot-cell {
+  background: linear-gradient(180deg, #fff6d0 0%, #ffd864 45%, #e0a52e 80%, #b37d16 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.pvalue-v2 .slot-cell {
+  background: linear-gradient(180deg, #ffffff 0%, #d7e1e8 50%, #93a3ad 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.pvalue-v3 .slot-cell {
+  background: linear-gradient(180deg, #fdeed8 0%, #e8b184 50%, #a3622c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* 银/铜牌数值避开与金牌卡片的重叠区（金牌渲染在最上层） */
+.podium.silver .pvalue { right: 50px; }
+.podium.bronze .pvalue { left: 35px; }
+
+/* 金牌金属光泽：高亮斜带周期性扫过卡片 */
+.pcard-gold::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 40%;
+  background: linear-gradient(105deg, transparent 0%, rgba(255, 240, 190, 0.08) 30%, rgba(255, 250, 220, 0.35) 50%, rgba(255, 240, 190, 0.08) 70%, transparent 100%);
+  transform: translateX(-120%) skewX(-12deg);
+  animation: lb-gold-sweep 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes lb-gold-sweep {
+  0% { transform: translateX(-120%) skewX(-12deg); }
+  45% { transform: translateX(320%) skewX(-12deg); }
+  100% { transform: translateX(320%) skewX(-12deg); }
+}
+
+/* 金牌徽章光泽呼吸 */
+.podium.gold .emblem {
+  animation: lb-emblem-shine 4.5s ease-in-out infinite;
+}
+@keyframes lb-emblem-shine {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(255, 210, 100, 0.25)) brightness(1); }
+  45% { filter: drop-shadow(0 0 22px rgba(255, 220, 120, 0.6)) brightness(1.15); }
+}
+
+/* 金牌底座光带闪烁 */
+.streak-gold {
+  animation: lb-streak-pulse 3s ease-in-out infinite;
+}
+@keyframes lb-streak-pulse {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+
+/* 背景缓慢呼吸 */
+.lb-bg {
+  animation: lb-bg-breathe 24s ease-in-out infinite alternate;
+}
+@keyframes lb-bg-breathe {
+  from { transform: scale(1); }
+  to { transform: scale(1.06); }
+}
+
+/* 修复幽灵残影：父级 background-clip:text 会把滚动列里相邻数字的笔画当文本裁剪出来，
+   改为父级不上背景，仅由 slot-cell 自己带渐变；逗号用接近的纯色 */
+.pvalue-v1, .pvalue-v2, .pvalue-v3 {
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  color: inherit;
+}
+.pvalue-v1 .slot-sep { color: #f2cf70; }
+.pvalue-v2 .slot-sep { color: #cfd9e0; }
+.pvalue-v3 .slot-sep { color: #e0a878; }

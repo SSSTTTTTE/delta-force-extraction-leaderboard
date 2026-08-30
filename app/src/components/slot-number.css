@@ -1,0 +1,34 @@
+/* 老虎机滚动数字 */
+
+.slot-number {
+  display: inline-flex;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+
+.slot-digit {
+  display: inline-block;
+  width: 0.62em;
+  height: 1em;
+  line-height: 1em;
+  overflow: hidden;
+}
+
+.slot-col {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.9s cubic-bezier(0.2, 0.7, 0.25, 1);
+  will-change: transform;
+}
+
+.slot-cell {
+  height: 1em;
+  line-height: 1em;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.slot-sep {
+  width: 0.34em;
+  text-align: center;
+}

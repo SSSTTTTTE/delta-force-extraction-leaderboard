@@ -1,0 +1,22 @@
+# Dependencies and build output
+**/node_modules/
+**/dist/
+**/dist-ssr/
+
+# Local tooling and environment files
+.playwright-cli/
+**/.env
+**/.env.*
+!**/.env.example
+
+# Operating system and editor files
+.DS_Store
+.vscode/
+.idea/
+*.local
+
+# Runtime logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*

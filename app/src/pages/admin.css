@@ -1,0 +1,215 @@
+/* 管理页样式 */
+
+.adm-root {
+  min-height: 100vh;
+  background: #0b0f14 radial-gradient(ellipse at 50% -10%, #16222e 0%, #0b0f14 60%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 16px;
+  color: #d8e2ea;
+  font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+.adm-card {
+  width: 100%;
+  max-width: 860px;
+  background: rgba(18, 26, 34, 0.9);
+  border: 1px solid rgba(94, 234, 212, 0.18);
+  border-radius: 10px;
+  padding: 28px;
+}
+
+.adm-login {
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.adm-title {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 2px;
+  color: #5eead4;
+}
+
+.adm-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.adm-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.adm-input {
+  background: rgba(10, 16, 22, 0.8);
+  border: 1px solid rgba(94, 234, 212, 0.25);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: #e6eef5;
+  font-size: 15px;
+  outline: none;
+}
+
+.adm-input:focus {
+  border-color: #5eead4;
+}
+
+.adm-btn {
+  padding: 10px 0;
+  background: #14b8a6;
+  border: none;
+  border-radius: 6px;
+  color: #04120f;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  cursor: pointer;
+}
+
+.adm-btn:hover {
+  background: #2dd4bf;
+}
+
+.adm-btn-ghost {
+  background: transparent;
+  border: 1px solid rgba(94, 234, 212, 0.4);
+  color: #5eead4;
+  padding: 8px 14px;
+}
+
+.adm-btn-ghost:hover {
+  background: rgba(94, 234, 212, 0.08);
+}
+
+.adm-btn-sm {
+  padding: 6px 12px;
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+.adm-btn-danger {
+  background: transparent;
+  border: 1px solid rgba(248, 113, 113, 0.5);
+  color: #fca5a5;
+}
+
+.adm-btn-danger:hover {
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.adm-link {
+  font-size: 13px;
+  color: #5eead4;
+  text-decoration: none;
+}
+
+.adm-link:hover {
+  text-decoration: underline;
+}
+
+.adm-msg {
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.adm-msg-err {
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  color: #fca5a5;
+}
+
+.adm-msg-ok {
+  background: rgba(52, 211, 153, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  color: #6ee7b7;
+}
+
+.adm-loading {
+  padding: 40px 0;
+  text-align: center;
+  color: #8fa3b3;
+  font-size: 14px;
+}
+
+.adm-player {
+  border: 1px solid rgba(94, 234, 212, 0.12);
+  border-radius: 8px;
+  margin-bottom: 10px;
+  background: rgba(10, 16, 22, 0.5);
+}
+
+.adm-player-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.adm-rank {
+  width: 28px;
+  text-align: center;
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 700;
+  color: rgba(200, 218, 208, 0.7);
+}
+
+.adm-pid {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  color: #e6eef5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adm-total {
+  width: 160px;
+  text-align: right;
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 700;
+  color: #2fe394;
+}
+
+.adm-entries {
+  border-top: 1px solid rgba(94, 234, 212, 0.12);
+  padding: 8px 14px;
+}
+
+.adm-entry {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 7px 0;
+  font-size: 13px;
+  border-bottom: 1px dashed rgba(94, 234, 212, 0.08);
+}
+
+.adm-entry:last-child {
+  border-bottom: none;
+}
+
+.adm-entry-empty {
+  color: #8fa3b3;
+}
+
+.adm-entry-time {
+  color: #8fa3b3;
+  width: 90px;
+}
+
+.adm-entry-value {
+  flex: 1;
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 700;
+  color: #2fe394;
+}

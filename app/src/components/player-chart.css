@@ -1,0 +1,15 @@
+/* 玩家历史曲线（点击 ID 展开） */
+
+.chart-wrap {
+  height: 150px;
+  padding: 6px 4px 10px;
+  box-sizing: border-box;
+}
+
+.chart-msg {
+  padding: 22px 0;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: rgba(170, 196, 182, 0.55);
+}
