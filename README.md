@@ -8,7 +8,7 @@
 - 使用 Tesseract.js 从战绩截图识别玩家名称和带出价值
 - Node.js 原生 HTTP 服务提供排行榜、提交记录和管理员接口
 - 本地 JSON 持久化，接口不可用时自动回退到前端 mock 数据
-- 管理员查看玩家历史、调整累计值、删除单条记录
+- 管理员查看玩家历史、调整累计值、删除单条记录，或删除玩家及其全部记录
 
 ## 技术栈
 
@@ -52,7 +52,7 @@ VITE_LEADERBOARD_API=https://your-server.example.com/api/leaderboard
 - Build Command：`npm run build`
 - Output Directory：`dist`
 
-Vercel 部署现在同时提供 `/api/leaderboard` Functions，读取仓库内的 `app/server/data.json` 作为当前真实榜单数据。前端使用同源 API，不再依赖 mock 数据。管理员登录需要在 Vercel 项目环境变量中设置 `ADMIN_PASSWORD` 和 `ADMIN_TOKEN`。
+Vercel 部署现在同时提供 `/api/leaderboard` Functions，读取仓库内的 `app/server/data.json` 作为初始真实榜单数据。前端使用同源 API，不再依赖 mock 数据；线上新增、调整和删除会写入 Vercel Function 的可写临时目录。管理员登录需要在 Vercel 项目环境变量中设置 `ADMIN_PASSWORD` 和 `ADMIN_TOKEN`。
 
 注意：Vercel Functions 的本地文件系统不适合作为长期数据库。若要让线上新增战绩、调整和删除记录永久保存，请将 `app/server/data.json` 迁移到数据库或 Vercel Blob/KV 等持久化存储。
 
@@ -75,8 +75,9 @@ npm run lint
 | `GET` | `/api/admin/players` | 获取全部玩家及历史 |
 | `POST` | `/api/admin/adjust` | 调整玩家累计值 |
 | `POST` | `/api/admin/delete-entry` | 删除一条提交记录 |
+| `POST` | `/api/admin/delete-player` | 删除玩家及其全部提交记录 |
 
-排行榜服务的数据默认保存在 `app/server/data.json`。生产部署时建议替换为数据库，并为管理接口增加 HTTPS、限流和更完善的身份认证。
+本地排行榜服务的数据默认保存在 `app/server/data.json`。Vercel 临时目录会在实例回收或重新部署后重置；如果需要线上数据永久保存，请将 `app/server/data.json` 迁移到数据库或 Vercel Blob/KV 等持久化存储，并为管理接口增加限流和更完善的身份认证。
 
 ## 项目结构
 

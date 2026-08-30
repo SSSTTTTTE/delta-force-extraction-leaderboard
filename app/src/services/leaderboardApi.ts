@@ -138,6 +138,14 @@ export function adminAdjust(playerId: string, total: number): Promise<{ ok: true
 export function adminDeleteEntry(
   playerId: string,
   index: number,
+  entry?: { value: number; ts: string },
 ): Promise<{ ok: true; total: number }> {
-  return adminFetch("/delete-entry", { method: "POST", body: JSON.stringify({ playerId, index }) });
+  return adminFetch("/delete-entry", {
+    method: "POST",
+    body: JSON.stringify({ playerId, index, ...entry }),
+  });
+}
+
+export function adminDeletePlayer(playerId: string): Promise<{ ok: true; playerId: string }> {
+  return adminFetch("/delete-player", { method: "POST", body: JSON.stringify({ playerId }) });
 }

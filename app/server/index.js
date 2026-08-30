@@ -14,7 +14,8 @@ import { fileURLToPath } from "node:url";
  *   POST /api/admin/login         { password }
  *   GET  /api/admin/players       全部玩家的总值与完整提交历史
  *   POST /api/admin/adjust        { playerId, total } 调整某人的累计总值
- *   POST /api/admin/delete-entry  { playerId, index } 删除某次提交记录并扣减对应总值
+ *   POST /api/admin/delete-entry  { playerId, index, value, ts } 删除某次提交记录并扣减对应总值
+ *   POST /api/admin/delete-player { playerId } 删除玩家及其全部提交记录
  *
  * 数据持久化在 server/data.json。
  */
@@ -197,10 +198,20 @@ const server = http.createServer(async (req, res) => {
         const index = Number(body.index);
         const data = loadData();
         const list = data.history[playerId];
-        if (!list || !Number.isInteger(index) || index < 0 || index >= list.length) {
+        let targetIndex = index;
+        if (
+          list &&
+          (!Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex >= list.length) &&
+          typeof body.ts === "string"
+        ) {
+          targetIndex = list.findIndex(
+            (entry) => entry.ts === body.ts && Number(entry.value) === Number(body.value),
+          );
+        }
+        if (!list || !Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex >= list.length) {
           return sendJson(res, 404, { error: "记录不存在" });
         }
-        const [removed] = list.splice(index, 1);
+        const [removed] = list.splice(targetIndex, 1);
         data.totals[playerId] = Math.max(0, (data.totals[playerId] ?? 0) - removed.value);
         // 总值与历史都清空时移除该玩家
         if (data.totals[playerId] === 0 && list.length === 0) {
@@ -211,6 +222,24 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 200, { ok: true, removed, total: data.totals[playerId] ?? 0 });
       } catch (err) {
         return sendJson(res, 400, { error: `请求解析失败: ${err.message}` });
+      }
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/admin/delete-player") {
+      try {
+        const body = JSON.parse(await readBody(req));
+        const playerId = String(body.playerId ?? "").trim();
+        if (!playerId) return sendJson(res, 400, { error: "playerId 不能为空" });
+        const data = loadData();
+        if (!(playerId in data.totals) && !(playerId in data.history)) {
+          return sendJson(res, 404, { error: "玩家不存在" });
+        }
+        delete data.totals[playerId];
+        delete data.history[playerId];
+        saveData(data);
+        return sendJson(res, 200, { ok: true, playerId });
+      } catch (err) {
+        return sendJson(res, 400, { error: `删除玩家失败: ${err.message}` });
       }
     }
 

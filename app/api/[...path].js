@@ -3,28 +3,36 @@ import path from "node:path";
 import seedData from "../server/data.json" with { type: "json" };
 
 const DATA_FILE = path.join(process.cwd(), "server", "data.json");
+// Vercel 的部署文件系统是只读的；把当前运行实例的修改写到可写临时目录。
+// 初始数据仍从仓库中的 data.json 读取，避免线上因 /var/task 路径不存在而提交失败。
+const RUNTIME_DATA_FILE = path.join("/tmp", "kasa-leaderboard-data.json");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "";
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN ?? "";
 const HISTORY_CAP = 50;
 const HISTORY_RECENT = 10;
 
 function loadData() {
-  try {
-    const raw = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
-    return {
-      totals: raw && typeof raw.totals === "object" && raw.totals !== null ? raw.totals : {},
-      history: raw && typeof raw.history === "object" && raw.history !== null ? raw.history : {},
-    };
-  } catch {
-    return {
-      totals: seedData.totals ?? {},
-      history: seedData.history ?? {},
-    };
+  for (const file of [RUNTIME_DATA_FILE, DATA_FILE]) {
+    try {
+      const raw = JSON.parse(fs.readFileSync(file, "utf8"));
+      return {
+        totals: raw && typeof raw.totals === "object" && raw.totals !== null ? raw.totals : {},
+        history: raw && typeof raw.history === "object" && raw.history !== null ? raw.history : {},
+      };
+    } catch {
+      // 运行时文件可能尚未创建，继续读取仓库内的种子数据。
+    }
   }
+  return {
+    totals: { ...(seedData.totals ?? {}) },
+    history: Object.fromEntries(
+      Object.entries(seedData.history ?? {}).map(([playerId, entries]) => [playerId, [...entries]]),
+    ),
+  };
 }
 
 function saveData(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+  fs.writeFileSync(RUNTIME_DATA_FILE, JSON.stringify(data, null, 2));
 }
 
 function buildResponse() {
@@ -168,6 +176,24 @@ export default async function handler(req, res) {
     }
   }
 
+  if (req.method === "POST" && route[adminPrefix + 1] === "delete-player") {
+    try {
+      const body = bodyOf(req);
+      const playerId = String(body.playerId ?? "").trim();
+      if (!playerId) return sendJson(res, 400, { error: "playerId 不能为空" });
+      const data = loadData();
+      if (!(playerId in data.totals) && !(playerId in data.history)) {
+        return sendJson(res, 404, { error: "玩家不存在" });
+      }
+      delete data.totals[playerId];
+      delete data.history[playerId];
+      saveData(data);
+      return sendJson(res, 200, { ok: true, playerId });
+    } catch (error) {
+      return sendJson(res, 400, { error: `删除玩家失败: ${error.message}` });
+    }
+  }
+
   if (req.method === "POST" && route[adminPrefix + 1] === "delete-entry") {
     try {
       const body = bodyOf(req);
@@ -175,10 +201,20 @@ export default async function handler(req, res) {
       const index = Number(body.index);
       const data = loadData();
       const history = data.history[playerId];
-      if (!history || !Number.isInteger(index) || index < 0 || index >= history.length) {
+      let targetIndex = index;
+      if (
+        history &&
+        (!Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex >= history.length) &&
+        typeof body.ts === "string"
+      ) {
+        targetIndex = history.findIndex(
+          (entry) => entry.ts === body.ts && Number(entry.value) === Number(body.value),
+        );
+      }
+      if (!history || !Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex >= history.length) {
         return sendJson(res, 404, { error: "记录不存在" });
       }
-      const [removed] = history.splice(index, 1);
+      const [removed] = history.splice(targetIndex, 1);
       data.totals[playerId] = Math.max(0, (data.totals[playerId] ?? 0) - removed.value);
       if (data.totals[playerId] === 0 && history.length === 0) {
         delete data.totals[playerId];

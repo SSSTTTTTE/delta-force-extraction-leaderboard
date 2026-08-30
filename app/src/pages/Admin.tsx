@@ -5,6 +5,7 @@ import type { AdminPlayer } from "@/types/leaderboard";
 import {
   adminAdjust,
   adminDeleteEntry,
+  adminDeletePlayer,
   adminFetchPlayers,
   adminLogin,
   clearAdminToken,
@@ -72,15 +73,31 @@ export default function Admin() {
     }
   };
 
-  const removeEntry = async (playerId: string, index: number, value: number) => {
+  const removeEntry = async (playerId: string, index: number, value: number, ts: string) => {
     if (!window.confirm(`确认删除 ${playerId} 的这条记录（+${formatValue(value)}）？将同时扣减总值。`)) {
       return;
     }
     setError(null);
     setNotice(null);
     try {
-      await adminDeleteEntry(playerId, index);
+      await adminDeleteEntry(playerId, index, { value, ts });
       setNotice("记录已删除");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const removePlayer = async (playerId: string) => {
+    if (!window.confirm(`确认删除玩家 ${playerId} 及其全部提交记录？此操作不可恢复。`)) {
+      return;
+    }
+    setError(null);
+    setNotice(null);
+    try {
+      await adminDeletePlayer(playerId);
+      setOpenId(null);
+      setNotice(`玩家 ${playerId} 及其全部记录已删除`);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -165,6 +182,9 @@ export default function Admin() {
               >
                 {openId === p.playerId ? "收起记录" : `提交记录（${p.history.length}）`}
               </button>
+              <button className="adm-btn adm-btn-sm adm-btn-danger" onClick={() => removePlayer(p.playerId)}>
+                删除玩家
+              </button>
             </div>
             {openId === p.playerId && (
               <div className="adm-entries">
@@ -177,7 +197,7 @@ export default function Admin() {
                     <span className="adm-entry-value">+{formatValue(h.value)}</span>
                     <button
                       className="adm-btn adm-btn-sm adm-btn-danger"
-                      onClick={() => removeEntry(p.playerId, h.index, h.value)}
+                      onClick={() => removeEntry(p.playerId, h.index, h.value, h.ts)}
                     >
                       删除
                     </button>
