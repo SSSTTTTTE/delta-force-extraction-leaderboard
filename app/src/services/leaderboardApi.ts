@@ -36,6 +36,14 @@ async function fetchFromApi(url: string): Promise<LeaderboardResponse> {
   return data;
 }
 
+function errorMessage(body: unknown, fallback: string): string {
+  if (body && typeof body === "object" && "error" in body) {
+    const error = (body as { error?: unknown }).error;
+    if (typeof error === "string") return error;
+  }
+  return fallback;
+}
+
 export async function fetchLeaderboard(): Promise<LeaderboardResponse> {
   try {
     return await fetchFromApi(API_URL);
@@ -57,7 +65,7 @@ export async function submitEntry(
   });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw new Error(body?.error ?? `提交失败（${res.status}）`);
+    throw new Error(errorMessage(body, `提交失败（${res.status}）`));
   }
   return (await res.json()) as LeaderboardResponse;
 }
@@ -95,7 +103,7 @@ export async function adminLogin(password: string): Promise<void> {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw new Error(body?.error ?? `登录失败（${res.status}）`);
+    throw new Error(errorMessage(body, `登录失败（${res.status}）`));
   }
   const body = (await res.json()) as { token: string };
   sessionStorage.setItem(ADMIN_TOKEN_KEY, body.token);
@@ -114,7 +122,7 @@ async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     if (res.status === 401) clearAdminToken();
-    throw new Error(body?.error ?? `请求失败（${res.status}）`);
+    throw new Error(errorMessage(body, `请求失败（${res.status}）`));
   }
   return (await res.json()) as T;
 }
