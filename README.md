@@ -52,7 +52,9 @@ VITE_LEADERBOARD_API=https://your-server.example.com/api/leaderboard
 - Build Command：`npm run build`
 - Output Directory：`dist`
 
-当前 Vercel 部署提供前端页面；排行榜 Node.js 服务仍需单独运行或迁移为 Vercel Functions。未配置 `VITE_LEADERBOARD_API` 时，页面会使用内置 mock 数据。
+Vercel 部署现在同时提供 `/api/leaderboard` Functions，读取仓库内的 `app/server/data.json` 作为当前真实榜单数据。前端使用同源 API，不再依赖 mock 数据。管理员登录需要在 Vercel 项目环境变量中设置 `ADMIN_PASSWORD` 和 `ADMIN_TOKEN`。
+
+注意：Vercel Functions 的本地文件系统不适合作为长期数据库。若要让线上新增战绩、调整和删除记录永久保存，请将 `app/server/data.json` 迁移到数据库或 Vercel Blob/KV 等持久化存储。
 
 ## 构建与检查
 
