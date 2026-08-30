@@ -1,28 +1,25 @@
 import fs from "node:fs";
 import path from "node:path";
+import { get, put } from "@vercel/blob";
 import seedData from "../server/data.json" with { type: "json" };
 
 const DATA_FILE = path.join(process.cwd(), "server", "data.json");
-// Vercel 的部署文件系统是只读的；把当前运行实例的修改写到可写临时目录。
-// 初始数据仍从仓库中的 data.json 读取，避免线上因 /var/task 路径不存在而提交失败。
+const BLOB_DATA_PATH = "kasa-leaderboard/data.json";
+// Vercel 线上使用 Blob 持久化；本地未配置 Blob 时仍使用项目内 JSON 文件。
 const RUNTIME_DATA_FILE = path.join("/tmp", "kasa-leaderboard-data.json");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "";
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN ?? "";
 const HISTORY_CAP = 50;
 const HISTORY_RECENT = 10;
 
-function loadData() {
-  for (const file of [RUNTIME_DATA_FILE, DATA_FILE]) {
-    try {
-      const raw = JSON.parse(fs.readFileSync(file, "utf8"));
-      return {
-        totals: raw && typeof raw.totals === "object" && raw.totals !== null ? raw.totals : {},
-        history: raw && typeof raw.history === "object" && raw.history !== null ? raw.history : {},
-      };
-    } catch {
-      // 运行时文件可能尚未创建，继续读取仓库内的种子数据。
-    }
-  }
+function normalizeData(raw) {
+  return {
+    totals: raw && typeof raw.totals === "object" && raw.totals !== null ? raw.totals : {},
+    history: raw && typeof raw.history === "object" && raw.history !== null ? raw.history : {},
+  };
+}
+
+function seedDataCopy() {
   return {
     totals: { ...(seedData.totals ?? {}) },
     history: Object.fromEntries(
@@ -31,12 +28,39 @@ function loadData() {
   };
 }
 
-function saveData(data) {
+async function loadData() {
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const blob = await get(BLOB_DATA_PATH, { access: "private", useCache: false });
+    if (blob) return normalizeData(JSON.parse(await new Response(blob.stream).text()));
+    return seedDataCopy();
+  }
+
+  for (const file of [RUNTIME_DATA_FILE, DATA_FILE]) {
+    try {
+      const raw = JSON.parse(fs.readFileSync(file, "utf8"));
+      return normalizeData(raw);
+    } catch {
+      // 运行时文件可能尚未创建，继续读取仓库内的种子数据。
+    }
+  }
+  return seedDataCopy();
+}
+
+async function saveData(data) {
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    await put(BLOB_DATA_PATH, JSON.stringify(data, null, 2), {
+      access: "private",
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      cacheControlMaxAge: 0,
+    });
+    return;
+  }
   fs.writeFileSync(RUNTIME_DATA_FILE, JSON.stringify(data, null, 2));
 }
 
-function buildResponse() {
-  const { totals } = loadData();
+async function buildResponse() {
+  const { totals } = await loadData();
   const entries = Object.entries(totals)
     .map(([playerId, value]) => ({ playerId, value }))
     .sort((a, b) => b.value - a.value)
@@ -91,12 +115,12 @@ export default async function handler(req, res) {
   }
 
   if (route[0] === "leaderboard" && req.method === "GET" && route.length === 1) {
-    return sendJson(res, 200, buildResponse());
+    return sendJson(res, 200, await buildResponse());
   }
 
   if (route[0] === "leaderboard" && req.method === "GET" && route[1] === "player" && route[2]) {
     const playerId = decodeURIComponent(route.slice(2).join("/"));
-    const data = loadData();
+    const data = await loadData();
     if (!(playerId in data.totals)) return sendJson(res, 404, { error: "玩家不存在" });
     return sendJson(res, 200, {
       playerId,
@@ -114,13 +138,13 @@ export default async function handler(req, res) {
       if (!Number.isFinite(value) || value < 0) {
         return sendJson(res, 400, { error: "value 必须是非负数字" });
       }
-      const data = loadData();
+      const data = await loadData();
       data.totals[playerId] = (data.totals[playerId] ?? 0) + Math.round(value);
       const history = (data.history[playerId] ??= []);
       history.push({ value: Math.round(value), ts: new Date().toISOString() });
       if (history.length > HISTORY_CAP) data.history[playerId] = history.slice(-HISTORY_CAP);
-      saveData(data);
-      return sendJson(res, 200, buildResponse());
+      await saveData(data);
+      return sendJson(res, 200, await buildResponse());
     } catch (error) {
       return sendJson(res, 400, { error: `请求解析失败: ${error.message}` });
     }
@@ -146,7 +170,7 @@ export default async function handler(req, res) {
   if (!requireAdmin(req, res)) return;
 
   if (req.method === "GET" && route[adminPrefix + 1] === "players") {
-    const data = loadData();
+    const data = await loadData();
     const players = Object.entries(data.totals)
       .map(([playerId, total]) => ({
         playerId,
@@ -166,10 +190,10 @@ export default async function handler(req, res) {
       if (!Number.isFinite(total) || total < 0) {
         return sendJson(res, 400, { error: "total 必须是非负数字" });
       }
-      const data = loadData();
+      const data = await loadData();
       if (!(playerId in data.totals)) return sendJson(res, 404, { error: "玩家不存在" });
       data.totals[playerId] = Math.round(total);
-      saveData(data);
+      await saveData(data);
       return sendJson(res, 200, { ok: true, total: data.totals[playerId] });
     } catch (error) {
       return sendJson(res, 400, { error: `请求解析失败: ${error.message}` });
@@ -181,13 +205,13 @@ export default async function handler(req, res) {
       const body = bodyOf(req);
       const playerId = String(body.playerId ?? "").trim();
       if (!playerId) return sendJson(res, 400, { error: "playerId 不能为空" });
-      const data = loadData();
+      const data = await loadData();
       if (!(playerId in data.totals) && !(playerId in data.history)) {
         return sendJson(res, 404, { error: "玩家不存在" });
       }
       delete data.totals[playerId];
       delete data.history[playerId];
-      saveData(data);
+      await saveData(data);
       return sendJson(res, 200, { ok: true, playerId });
     } catch (error) {
       return sendJson(res, 400, { error: `删除玩家失败: ${error.message}` });
@@ -199,7 +223,7 @@ export default async function handler(req, res) {
       const body = bodyOf(req);
       const playerId = String(body.playerId ?? "").trim();
       const index = Number(body.index);
-      const data = loadData();
+      const data = await loadData();
       const history = data.history[playerId];
       let targetIndex = index;
       if (
@@ -220,7 +244,7 @@ export default async function handler(req, res) {
         delete data.totals[playerId];
         delete data.history[playerId];
       }
-      saveData(data);
+      await saveData(data);
       return sendJson(res, 200, { ok: true, removed, total: data.totals[playerId] ?? 0 });
     } catch (error) {
       return sendJson(res, 400, { error: `请求解析失败: ${error.message}` });

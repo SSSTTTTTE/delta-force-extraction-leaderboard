@@ -52,9 +52,9 @@ VITE_LEADERBOARD_API=https://your-server.example.com/api/leaderboard
 - Build Command：`npm run build`
 - Output Directory：`dist`
 
-Vercel 部署现在同时提供 `/api/leaderboard` Functions，读取仓库内的 `app/server/data.json` 作为初始真实榜单数据。前端使用同源 API，不再依赖 mock 数据；线上新增、调整和删除会写入 Vercel Function 的可写临时目录。管理员登录需要在 Vercel 项目环境变量中设置 `ADMIN_PASSWORD` 和 `ADMIN_TOKEN`。
+Vercel 部署现在同时提供 `/api/leaderboard` Functions，读取仓库内的 `app/server/data.json` 作为初始真实榜单数据。线上新增、调整和删除会写入已连接的 Vercel Blob `kasa-leaderboard`，因此不同 Function 实例读取的是同一份数据。管理员登录需要在 Vercel 项目环境变量中设置 `ADMIN_PASSWORD` 和 `ADMIN_TOKEN`。
 
-注意：Vercel Functions 的本地文件系统不适合作为长期数据库。若要让线上新增战绩、调整和删除记录永久保存，请将 `app/server/data.json` 迁移到数据库或 Vercel Blob/KV 等持久化存储。
+注意：生产环境需要保持 `BLOB_READ_WRITE_TOKEN` 已连接到 Vercel 项目。当前项目已创建并连接私有 Blob 存储；本地开发未配置该变量时仍使用 `app/server/data.json`。
 
 ## 构建与检查
 
@@ -77,7 +77,7 @@ npm run lint
 | `POST` | `/api/admin/delete-entry` | 删除一条提交记录 |
 | `POST` | `/api/admin/delete-player` | 删除玩家及其全部提交记录 |
 
-本地排行榜服务的数据默认保存在 `app/server/data.json`。Vercel 临时目录会在实例回收或重新部署后重置；如果需要线上数据永久保存，请将 `app/server/data.json` 迁移到数据库或 Vercel Blob/KV 等持久化存储，并为管理接口增加限流和更完善的身份认证。
+本地排行榜服务的数据默认保存在 `app/server/data.json`，生产环境使用 Vercel Blob 持久化。生产部署仍建议为管理接口增加限流和更完善的身份认证。
 
 ## 项目结构
 
