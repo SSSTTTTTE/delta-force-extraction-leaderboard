@@ -43,6 +43,17 @@ VITE_LEADERBOARD_API=https://your-server.example.com/api/leaderboard
 
 管理员密码和令牌只通过环境变量配置，详见 [`app/.env.example`](app/.env.example)。不要把真实凭据提交到 Git。
 
+## Vercel 部署
+
+本项目已连接到 Vercel，使用 GitHub `main` 分支自动部署。Vercel 项目设置如下：
+
+- Root Directory：`app`
+- Framework Preset：`Vite`
+- Build Command：`npm run build`
+- Output Directory：`dist`
+
+当前 Vercel 部署提供前端页面；排行榜 Node.js 服务仍需单独运行或迁移为 Vercel Functions。未配置 `VITE_LEADERBOARD_API` 时，页面会使用内置 mock 数据。
+
 ## 构建与检查
 
 ```bash
