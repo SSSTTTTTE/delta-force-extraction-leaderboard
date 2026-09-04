@@ -37,6 +37,8 @@ export default function Upload() {
   const [progress, setProgress] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [batchName, setBatchName] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const patch = (key: string, p: Partial<Item>) =>
@@ -70,6 +72,32 @@ export default function Upload() {
       if (it) URL.revokeObjectURL(it.url);
       return prev.filter((x) => x.key !== key);
     });
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  };
+
+  const toggleSelect = (key: string, checked: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  };
+
+  /** 一键把选中条目的玩家 ID 统一改成输入的名字 */
+  const applyBatchName = () => {
+    const name = batchName.trim();
+    if (!name || selected.size === 0) return;
+    setItems((prev) =>
+      prev.map((it) =>
+        it.status === "ready" && selected.has(it.key) ? { ...it, playerId: name } : it,
+      ),
+    );
+    setNotice(`已批量修改 ${selected.size} 条的玩家 ID 为「${name}」`);
   };
 
   const recognizeAll = async () => {
@@ -145,6 +173,8 @@ export default function Upload() {
   const readyCount = items.filter(
     (it) => it.status === "ready" && it.playerId.trim() && it.value !== null,
   ).length;
+  const readyKeys = items.filter((it) => it.status === "ready").map((it) => it.key);
+  const allChecked = readyKeys.length > 0 && readyKeys.every((k) => selected.has(k));
 
   return (
     <div className="up-root">
@@ -179,10 +209,49 @@ export default function Upload() {
           />
         </div>
 
+        {readyKeys.length > 0 && (
+          <div className="up-batch">
+            <label className="up-batch-check">
+              <input
+                type="checkbox"
+                checked={allChecked}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setSelected(checked ? new Set(readyKeys) : new Set());
+                }}
+              />
+              全选
+            </label>
+            <span className="up-batch-count">已选 {selected.size} 项</span>
+            <input
+              className="up-batch-input"
+              value={batchName}
+              onChange={(e) => setBatchName(e.target.value)}
+              placeholder="统一修改玩家 ID 为…"
+            />
+            <button
+              className="up-btn up-btn-sm"
+              onClick={applyBatchName}
+              disabled={selected.size === 0 || !batchName.trim()}
+            >
+              一键修改
+            </button>
+          </div>
+        )}
+
         {items.length > 0 && (
           <div className="up-items">
             {items.map((it) => (
               <div key={it.key} className={`up-item up-item-${it.status}`}>
+                {it.status === "ready" && (
+                  <input
+                    className="up-item-check"
+                    type="checkbox"
+                    checked={selected.has(it.key)}
+                    onChange={(e) => toggleSelect(it.key, e.target.checked)}
+                    title="选择后可批量修改玩家 ID"
+                  />
+                )}
                 <img
                   className="up-thumb"
                   src={it.url}

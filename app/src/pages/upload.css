@@ -335,3 +335,65 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* 批量修改工具栏 */
+.up-batch {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(94, 234, 212, 0.18);
+  border-radius: 8px;
+  background: rgba(10, 16, 22, 0.6);
+}
+
+.up-batch-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #8fa3b3;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.up-batch-count {
+  font-size: 12px;
+  color: #6b7f8f;
+  white-space: nowrap;
+}
+
+.up-batch-input {
+  flex: 1;
+  background: rgba(10, 16, 22, 0.8);
+  border: 1px solid rgba(94, 234, 212, 0.25);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: #e6eef5;
+  font-size: 14px;
+  outline: none;
+  min-width: 0;
+}
+
+.up-batch-input:focus {
+  border-color: #5eead4;
+}
+
+.up-btn-sm {
+  margin-top: 0;
+  width: auto;
+  padding: 8px 16px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* 条目多选框 */
+.up-item-check {
+  width: 16px;
+  height: 16px;
+  margin-top: 26px;
+  accent-color: #14b8a6;
+  cursor: pointer;
+  flex-shrink: 0;
+}
