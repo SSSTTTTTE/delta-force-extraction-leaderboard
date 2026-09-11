@@ -135,6 +135,10 @@ export function adminAdjust(playerId: string, total: number): Promise<{ ok: true
   return adminFetch("/adjust", { method: "POST", body: JSON.stringify({ playerId, total }) });
 }
 
+export function adminRename(playerId: string, newName: string): Promise<{ ok: true; playerId: string }> {
+  return adminFetch("/rename", { method: "POST", body: JSON.stringify({ playerId, newName }) });
+}
+
 export function adminDeleteEntry(
   playerId: string,
   index: number,

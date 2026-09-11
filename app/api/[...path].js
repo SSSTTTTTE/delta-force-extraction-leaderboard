@@ -200,6 +200,33 @@ export default async function handler(req, res) {
     }
   }
 
+  if (req.method === "POST" && route[adminPrefix + 1] === "rename") {
+    try {
+      const body = bodyOf(req);
+      const playerId = String(body.playerId ?? "").trim();
+      const newName = String(body.newName ?? "").trim();
+      if (!playerId) return sendJson(res, 400, { error: "playerId 不能为空" });
+      if (!newName) return sendJson(res, 400, { error: "新昵称不能为空" });
+      const data = await loadData();
+      if (!(playerId in data.totals)) return sendJson(res, 404, { error: "玩家不存在" });
+      if (newName !== playerId && newName in data.totals) {
+        return sendJson(res, 400, { error: "该昵称已被使用" });
+      }
+      if (newName !== playerId) {
+        data.totals[newName] = data.totals[playerId];
+        delete data.totals[playerId];
+        if (playerId in data.history) {
+          data.history[newName] = data.history[playerId];
+          delete data.history[playerId];
+        }
+        await saveData(data);
+      }
+      return sendJson(res, 200, { ok: true, playerId: newName });
+    } catch (error) {
+      return sendJson(res, 400, { error: `请求解析失败: ${error.message}` });
+    }
+  }
+
   if (req.method === "POST" && route[adminPrefix + 1] === "delete-player") {
     try {
       const body = bodyOf(req);

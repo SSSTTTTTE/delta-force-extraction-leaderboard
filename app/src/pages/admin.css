@@ -162,14 +162,11 @@
   color: rgba(200, 218, 208, 0.7);
 }
 
-.adm-pid {
+.adm-name {
   flex: 1;
+  min-width: 120px;
   font-size: 15px;
   font-weight: 600;
-  color: #e6eef5;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .adm-total {

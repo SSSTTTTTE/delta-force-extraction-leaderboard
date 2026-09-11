@@ -8,6 +8,7 @@ import {
   adminDeletePlayer,
   adminFetchPlayers,
   adminLogin,
+  adminRename,
   clearAdminToken,
   formatValue,
   getAdminToken,
@@ -24,6 +25,7 @@ export default function Admin() {
   const [password, setPassword] = useState("");
   const [players, setPlayers] = useState<AdminPlayer[] | null>(null);
   const [edits, setEdits] = useState<Record<string, string>>({});
+  const [nameEdits, setNameEdits] = useState<Record<string, string>>({});
   const [openId, setOpenId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -33,6 +35,7 @@ export default function Admin() {
       const d = await adminFetchPlayers();
       setPlayers(d.players);
       setEdits(Object.fromEntries(d.players.map((p) => [p.playerId, String(p.total)])));
+      setNameEdits(Object.fromEntries(d.players.map((p) => [p.playerId, p.playerId])));
     } catch (e) {
       if (e instanceof Error && e.message.includes("未授权")) {
         setAuthed(false);
@@ -67,6 +70,28 @@ export default function Admin() {
     try {
       await adminAdjust(playerId, total);
       setNotice(`已调整 ${playerId} 的总值为 ${formatValue(total)}`);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const saveName = async (playerId: string) => {
+    setError(null);
+    setNotice(null);
+    const newName = (nameEdits[playerId] ?? "").trim();
+    if (!newName) {
+      setError("昵称不能为空");
+      return;
+    }
+    if (newName === playerId) {
+      setNotice("昵称未变化");
+      return;
+    }
+    try {
+      await adminRename(playerId, newName);
+      setOpenId(null);
+      setNotice(`已将 ${playerId} 改名为 ${newName}`);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -164,7 +189,18 @@ export default function Admin() {
           <div key={p.playerId} className="adm-player">
             <div className="adm-player-row">
               <span className="adm-rank">{i + 1}</span>
-              <span className="adm-pid">{p.playerId}</span>
+              <input
+                className="adm-input adm-name"
+                value={nameEdits[p.playerId] ?? p.playerId}
+                onChange={(e) =>
+                  setNameEdits((prev) => ({ ...prev, [p.playerId]: e.target.value }))
+                }
+                onKeyDown={(e) => e.key === "Enter" && saveName(p.playerId)}
+                maxLength={30}
+              />
+              <button className="adm-btn adm-btn-sm adm-btn-ghost" onClick={() => saveName(p.playerId)}>
+                保存昵称
+              </button>
               <input
                 className="adm-input adm-total"
                 value={edits[p.playerId] ?? ""}

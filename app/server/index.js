@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
  *   POST /api/admin/login         { password }
  *   GET  /api/admin/players       全部玩家的总值与完整提交历史
  *   POST /api/admin/adjust        { playerId, total } 调整某人的累计总值
+ *   POST /api/admin/rename        { playerId, newName } 修改玩家昵称（排行榜同步生效）
  *   POST /api/admin/delete-entry  { playerId, index, value, ts } 删除某次提交记录并扣减对应总值
  *   POST /api/admin/delete-player { playerId } 删除玩家及其全部提交记录
  *
@@ -220,6 +221,33 @@ const server = http.createServer(async (req, res) => {
         }
         saveData(data);
         return sendJson(res, 200, { ok: true, removed, total: data.totals[playerId] ?? 0 });
+      } catch (err) {
+        return sendJson(res, 400, { error: `请求解析失败: ${err.message}` });
+      }
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/admin/rename") {
+      try {
+        const body = JSON.parse(await readBody(req));
+        const playerId = String(body.playerId ?? "").trim();
+        const newName = String(body.newName ?? "").trim();
+        if (!playerId) return sendJson(res, 400, { error: "playerId 不能为空" });
+        if (!newName) return sendJson(res, 400, { error: "新昵称不能为空" });
+        const data = loadData();
+        if (!(playerId in data.totals)) return sendJson(res, 404, { error: "玩家不存在" });
+        if (newName !== playerId && newName in data.totals) {
+          return sendJson(res, 400, { error: "该昵称已被使用" });
+        }
+        if (newName !== playerId) {
+          data.totals[newName] = data.totals[playerId];
+          delete data.totals[playerId];
+          if (playerId in data.history) {
+            data.history[newName] = data.history[playerId];
+            delete data.history[playerId];
+          }
+          saveData(data);
+        }
+        return sendJson(res, 200, { ok: true, playerId: newName });
       } catch (err) {
         return sendJson(res, 400, { error: `请求解析失败: ${err.message}` });
       }
