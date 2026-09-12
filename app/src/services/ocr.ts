@@ -24,8 +24,6 @@ export interface CropRegion {
   top: number;
   width: number;
   height: number;
-  /** 名字列的左边界（原图 x 坐标）：二次识别时丢弃明显位于此线左侧的行（悬浮 overlay 文字等） */
-  anchorX: number;
 }
 
 export interface ParsedScore {
@@ -33,6 +31,8 @@ export interface ParsedScore {
   value: number;
   /** 玩家 ID 文字所在区域（相对原图像素），用于裁剪后二次精识别 */
   nameRegion: CropRegion | null;
+  /** 带出价值数字区域，放大复核易混淆的数字（如 6 / 8） */
+  valueRegion: CropRegion;
 }
 
 /** 状态/表头等需要剔除的词 */
@@ -82,40 +82,35 @@ export function parseScoreboard(words: OcrWord[]): ParsedScore | null {
     })
     .sort((a, b) => a.top - b.top || a.left - b.left);
 
-  const nameParts = rowWords
-    .filter((w) => parseValueToken(w.text) === null)
-    .map((w) => w.text.trim());
-
-  const playerId = cleanName(nameParts.join(""));
-
-  // 定位名字区域供二次精识别：以「撤离失败/撤离成功」状态词为锚点，
-  // 裁剪范围覆盖状态行和名字行（状态词会在清洗时被剔除）；
-  // 找不到状态词时按固定列距估算名字列位置（名字列约在价值列左侧 175px），
-  // 同时避开左侧头像和屏幕左缘的悬浮 overlay 文字
+  // 状态在金额中心线上方，昵称在下方。只裁昵称行，避免把误读的
+  // 「撤离成功」当成昵称；用字高估算列距以适配不同分辨率。
   const status = rowWords.find((w) => /撤|撒|搬|成功|失败|成力/.test(w.text));
+  const h = best.word.height;
+  const nameAnchor = rowWords
+    .filter((w) => w.left > best.word.left - h * 11 && parseValueToken(w.text) === null)
+    .sort((a, b) => a.left - b.left)[0];
+  // 中文昵称经常被拆成多个词，必须从最左侧开始，不能只保留最后一个词。
+  const anchorX = Math.min(status?.left ?? Infinity, nameAnchor?.left ?? best.word.left - h * 10);
+  const left = Math.max(0, anchorX - h * 0.5);
+  const top = Math.max(0, cy - h * 0.1);
+  const width = best.word.left - h - left;
   let nameRegion: CropRegion | null = null;
-  if (status) {
-    const left = Math.max(0, status.left - 8);
-    const width = best.word.left - 30 - left;
-    if (width > 0) {
-      nameRegion = {
-        left,
-        top: Math.max(0, status.top - 4),
-        width,
-        height: status.height * 4,
-        anchorX: status.left,
-      };
-    }
-  } else {
-    const bandH = bandBottom - bandTop;
-    const left = Math.max(bandH, best.word.left - 175); // 名字列约位置，兼跳过头像
-    const width = best.word.left - 20 - left;
-    if (width > 0) {
-      nameRegion = { left, top: bandTop, width, height: bandH, anchorX: left };
-    }
+  if (width > 0) {
+    nameRegion = { left, top, width, height: h * 1.8 };
   }
 
-  return { playerId, value: best.value, nameRegion };
+  const playerId = cleanName(rowWords
+    .filter((w) => w.left >= left && w.top >= top && parseValueToken(w.text) === null)
+    .sort((a, b) => a.left - b.left)
+    .map((w) => w.text).join(""));
+  const padding = h * 0.4;
+  const valueRegion = {
+    left: Math.max(0, best.word.left - padding),
+    top: Math.max(0, best.word.top - padding),
+    width: best.word.width + padding * 2,
+    height: h + padding * 2,
+  };
+  return { playerId, value: best.value, nameRegion, valueRegion };
 }
 
 /** 清洗识别出的名字：去掉空白和状态/表头噪声词 */

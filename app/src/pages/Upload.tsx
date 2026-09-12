@@ -270,7 +270,7 @@ export default function Upload() {
                         placeholder="玩家 ID（识别有误可修改）"
                         disabled={it.status === "done"}
                       />
-                      <div className="up-item-value">
+                      <div className="up-item-value" aria-label={`带出价值：${it.value?.toLocaleString("en-US") ?? "-"}`}>
                         带出价值：{it.value !== null ? <SlotNumber value={it.value} /> : "-"}
                       </div>
                     </>

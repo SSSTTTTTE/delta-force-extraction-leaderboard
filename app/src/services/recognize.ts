@@ -6,16 +6,8 @@ export interface RecognizeResult {
   value: number;
 }
 
-/**
- * 名字区域二次精识别：整图 OCR 对「小号浅灰中文」识别很差，
- * 把名字所在区域裁出来放大 3 倍并反色（黑字白底）后，
- * 用稀疏文本模式单独再识别一次。
- */
-async function refineName(
-  file: File | Blob,
-  region: CropRegion,
-  worker: Worker,
-): Promise<string> {
+/** 裁剪并放大浅色小字，反色为黑字白底供二次识别。 */
+async function prepareCrop(file: File | Blob, region: CropRegion): Promise<HTMLCanvasElement> {
   const bmp = await createImageBitmap(file);
   const scale = 3;
   const canvas = document.createElement("canvas");
@@ -45,42 +37,47 @@ async function refineName(
   }
   ctx.putImageData(img, 0, 0);
 
-  // 稀疏文本模式对「小号浅灰文字 + 加粗状态行」的混合区域识别效果最好
-  await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT });
+  return canvas;
+}
+
+/** 单行模式能够保留「云」这样的单字昵称，稀疏文本模式会忽略它。 */
+async function refineName(file: File | Blob, region: CropRegion, worker: Worker): Promise<string> {
+  const canvas = await prepareCrop(file, region);
   try {
-    const { data } = await worker.recognize(canvas, {}, { text: true, blocks: true });
-    // 按行过滤：丢弃整体位于名字列左边界（anchorX）左侧的行——那是屏幕左缘的悬浮 overlay 文字
-    const lines = (data.blocks ?? []).flatMap((b) =>
-      b.paragraphs.flatMap((p) =>
-        p.lines.map((l) => ({
-          text: l.text,
-          // 行在原图中的左边界 x
-          x: region.left + l.bbox.x0 / scale,
-        })),
-      ),
-    );
-    const kept = lines.filter((l) => l.x >= region.anchorX - 8);
-    const source = kept.length > 0 ? kept : lines;
-    const refined = pickName(source.map((l) => l.text).join("\n"));
-    if (refined) return refined;
-    // blocks 不可用时退回纯文本
-    const fallback = pickName(data.text ?? "");
-    if (fallback) return fallback;
+    for (const mode of [PSM.SINGLE_LINE, PSM.SINGLE_BLOCK]) {
+      await worker.setParameters({ tessedit_pageseg_mode: mode, tessedit_char_whitelist: "" });
+      const { data } = await worker.recognize(canvas, {}, { text: true, blocks: false });
+      const name = pickName(data.text ?? "");
+      if (name) return name;
+    }
+    return "";
   } finally {
-    await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
+    await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO, tessedit_char_whitelist: "" });
   }
-  // 稀疏模式没读出内容时退回到单块模式再试一次
-  await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_BLOCK });
+}
+
+/** 金额独立放大识别，限制字符集，避免整图中的 6 / 8 等误读直接进入榜单。 */
+async function refineValue(file: File | Blob, region: CropRegion, worker: Worker): Promise<number | null> {
+  const canvas = await prepareCrop(file, region);
   try {
+    await worker.setParameters({
+      tessedit_pageseg_mode: PSM.SINGLE_LINE,
+      tessedit_char_whitelist: "0123456789,",
+    });
     const { data } = await worker.recognize(canvas, {}, { text: true, blocks: false });
-    return pickName(data.text ?? "");
+    const text = data.text.trim();
+    // 必须完整读到一个金额，不能从残缺文本中截取部分数字。
+    if (data.confidence < 70 || !/^(?:\d{1,3}(?:,\d{3})+|\d{1,9})$/.test(text)) return null;
+    const value = Number(text.replace(/,/g, ""));
+    return Number.isSafeInteger(value) ? value : null;
   } finally {
-    await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
+    // 同一 worker 会继续识别昵称及后续图片，不能残留数字白名单。
+    await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO, tessedit_char_whitelist: "" });
   }
 }
 
 /**
- * 识别一张战绩截图：整图定位带出价值最高的行，裁剪名字区域二次精识别。
+ * 识别一张战绩截图：整图定位带出价值最高的行，分别裁剪昵称和金额二次精识别。
  * 识别不到任何价值数字时返回 null。
  */
 export async function recognizeScore(
@@ -91,7 +88,7 @@ export async function recognizeScore(
   void onProgress;
   // 显式使用 AUTO 分页模式：v7 默认模式对多行表格分词很差，
   // 会导致状态词锚点失效、名字行被合并成乱码
-  await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
+  await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO, tessedit_char_whitelist: "" });
   const { data } = await worker.recognize(file, {}, { blocks: true, text: false });
   // v7 结构：blocks -> paragraphs -> lines -> words，拍平成词列表
   const words: OcrWord[] = (data.blocks ?? []).flatMap((b) =>
@@ -118,5 +115,11 @@ export async function recognizeScore(
       // 精识别失败时沿用整图识别结果
     }
   }
-  return { playerId, value: parsed.value };
+  let value = parsed.value;
+  try {
+    value = await refineValue(file, parsed.valueRegion, worker) ?? value;
+  } catch {
+    // 放大复核失败时保留整图结果，让用户在提交前核对。
+  }
+  return { playerId, value };
 }

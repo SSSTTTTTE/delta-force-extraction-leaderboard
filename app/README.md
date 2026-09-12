@@ -1,5 +1,13 @@
 # React + TypeScript + Vite
 
+## OCR regression tests
+
+Run `npx playwright install chromium` once, then `npm test`. To use an installed
+Google Chrome instead, run `PLAYWRIGHT_CHANNEL=chrome npm test`.
+The tests start Vite automatically and run real local Tesseract OCR on the regression
+fixture. They check the nickname `云`, value `17,824,436`, and worker reuse across
+two uploads without submitting any entries to the leaderboard.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
