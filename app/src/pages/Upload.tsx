@@ -270,9 +270,23 @@ export default function Upload() {
                         placeholder="玩家 ID（识别有误可修改）"
                         disabled={it.status === "done"}
                       />
-                      <div className="up-item-value" aria-label={`带出价值：${it.value?.toLocaleString("en-US") ?? "-"}`}>
-                        带出价值：{it.value !== null ? <SlotNumber value={it.value} /> : "-"}
-                      </div>
+                      {it.status === "ready" ? (
+                        <input
+                          className="up-item-id up-item-value-input"
+                          value={it.value !== null ? String(it.value) : ""}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/[^\d]/g, "");
+                            patch(it.key, { value: digits === "" ? null : Number(digits) });
+                          }}
+                          placeholder="带出价值（识别有误可修改）"
+                          inputMode="numeric"
+                          aria-label="带出价值"
+                        />
+                      ) : (
+                        <div className="up-item-value" aria-label={`带出价值：${it.value?.toLocaleString("en-US") ?? "-"}`}>
+                          带出价值：{it.value !== null ? <SlotNumber value={it.value} /> : "-"}
+                        </div>
+                      )}
                     </>
                   )}
                   {it.status === "error" && <div className="up-item-err">{it.error}</div>}
