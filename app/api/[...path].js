@@ -5,12 +5,54 @@ import seedData from "../server/data.json" with { type: "json" };
 
 const DATA_FILE = path.join(process.cwd(), "server", "data.json");
 const BLOB_DATA_PATH = "kasa-leaderboard/data.json";
-// Vercel 线上使用 Blob 持久化；本地未配置 Blob 时仍使用项目内 JSON 文件。
+// 存储优先级：Supabase（推荐，配置环境变量即启用）→ Vercel Blob（旧方案，过渡兼容）→ 本地 JSON 文件。
+const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+const SUPABASE_TABLE = "leaderboard_store";
+const SUPABASE_DATA_KEY = "kasa-leaderboard:data";
 const RUNTIME_DATA_FILE = path.join("/tmp", "kasa-leaderboard-data.json");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "";
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN ?? "";
 const HISTORY_CAP = 50;
 const HISTORY_RECENT = 10;
+
+class StorageUnavailableError extends Error {
+  constructor(message, cause) {
+    super(message, { cause });
+    this.name = "StorageUnavailableError";
+  }
+}
+
+async function withStorage(storageName, operation) {
+  try {
+    return await operation();
+  } catch (error) {
+    throw new StorageUnavailableError(
+      `排行榜存储暂不可用，请管理员检查 ${storageName} 的用量限额、暂停状态和访问配置后重试。`,
+      error,
+    );
+  }
+}
+
+async function supabaseRequest(pathname, init = {}) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${pathname}`, {
+    ...init,
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+      ...init.headers,
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Supabase: HTTP ${response.status} ${await response.text()}`);
+  }
+  return response;
+}
+
+function hasSupabaseStorage() {
+  return Boolean(SUPABASE_URL && SUPABASE_KEY);
+}
 
 function normalizeData(raw) {
   return {
@@ -29,10 +71,23 @@ function seedDataCopy() {
 }
 
 async function loadData() {
+  if (hasSupabaseStorage()) {
+    return withStorage("Supabase", async () => {
+      const response = await supabaseRequest(
+        `${SUPABASE_TABLE}?key=eq.${encodeURIComponent(SUPABASE_DATA_KEY)}&select=value`,
+      );
+      const rows = await response.json();
+      if (Array.isArray(rows) && rows.length > 0) return normalizeData(rows[0].value);
+      return seedDataCopy();
+    });
+  }
+
   if (process.env.BLOB_READ_WRITE_TOKEN) {
-    const blob = await get(BLOB_DATA_PATH, { access: "private", useCache: false });
-    if (blob) return normalizeData(JSON.parse(await new Response(blob.stream).text()));
-    return seedDataCopy();
+    return withStorage("Vercel Blob", async () => {
+      const blob = await get(BLOB_DATA_PATH, { access: "private", useCache: false });
+      if (blob) return normalizeData(JSON.parse(await new Response(blob.stream).text()));
+      return seedDataCopy();
+    });
   }
 
   for (const file of [RUNTIME_DATA_FILE, DATA_FILE]) {
@@ -47,13 +102,21 @@ async function loadData() {
 }
 
 async function saveData(data) {
+  if (hasSupabaseStorage()) {
+    await withStorage("Supabase", () => supabaseRequest(SUPABASE_TABLE, {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates" },
+      body: JSON.stringify({ key: SUPABASE_DATA_KEY, value: data }),
+    }));
+    return;
+  }
   if (process.env.BLOB_READ_WRITE_TOKEN) {
-    await put(BLOB_DATA_PATH, JSON.stringify(data, null, 2), {
+    await withStorage("Vercel Blob", () => put(BLOB_DATA_PATH, JSON.stringify(data, null, 2), {
       access: "private",
       addRandomSuffix: false,
       allowOverwrite: true,
       cacheControlMaxAge: 0,
-    });
+    }));
     return;
   }
   fs.writeFileSync(RUNTIME_DATA_FILE, JSON.stringify(data, null, 2));
@@ -82,6 +145,7 @@ function getPath(req) {
 function sendJson(res, status, body) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Cache-Control", "no-store");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type,Accept,x-admin-token");
@@ -107,6 +171,18 @@ function requireAdmin(req, res) {
 }
 
 export default async function handler(req, res) {
+  try {
+    return await handleRequest(req, res);
+  } catch (error) {
+    console.error("[leaderboard] Request failed:", error);
+    if (error instanceof StorageUnavailableError) {
+      return sendJson(res, 503, { error: error.message, code: "STORAGE_UNAVAILABLE" });
+    }
+    return sendJson(res, 500, { error: "服务暂时异常，请稍后重试。" });
+  }
+}
+
+async function handleRequest(req, res) {
   if (req.method === "OPTIONS") return sendJson(res, 204, {});
 
   const route = getPath(req);
@@ -146,6 +222,7 @@ export default async function handler(req, res) {
       await saveData(data);
       return sendJson(res, 200, await buildResponse());
     } catch (error) {
+      if (error instanceof StorageUnavailableError) throw error;
       return sendJson(res, 400, { error: `请求解析失败: ${error.message}` });
     }
   }
@@ -163,6 +240,7 @@ export default async function handler(req, res) {
         ? sendJson(res, 200, { ok: true, token: ADMIN_TOKEN })
         : sendJson(res, 401, { error: "密码错误" });
     } catch (error) {
+      if (error instanceof StorageUnavailableError) throw error;
       return sendJson(res, 400, { error: `请求解析失败: ${error.message}` });
     }
   }
@@ -196,6 +274,7 @@ export default async function handler(req, res) {
       await saveData(data);
       return sendJson(res, 200, { ok: true, total: data.totals[playerId] });
     } catch (error) {
+      if (error instanceof StorageUnavailableError) throw error;
       return sendJson(res, 400, { error: `请求解析失败: ${error.message}` });
     }
   }
@@ -223,6 +302,7 @@ export default async function handler(req, res) {
       }
       return sendJson(res, 200, { ok: true, playerId: newName });
     } catch (error) {
+      if (error instanceof StorageUnavailableError) throw error;
       return sendJson(res, 400, { error: `请求解析失败: ${error.message}` });
     }
   }
@@ -241,6 +321,7 @@ export default async function handler(req, res) {
       await saveData(data);
       return sendJson(res, 200, { ok: true, playerId });
     } catch (error) {
+      if (error instanceof StorageUnavailableError) throw error;
       return sendJson(res, 400, { error: `删除玩家失败: ${error.message}` });
     }
   }
@@ -274,6 +355,7 @@ export default async function handler(req, res) {
       await saveData(data);
       return sendJson(res, 200, { ok: true, removed, total: data.totals[playerId] ?? 0 });
     } catch (error) {
+      if (error instanceof StorageUnavailableError) throw error;
       return sendJson(res, 400, { error: `请求解析失败: ${error.message}` });
     }
   }
